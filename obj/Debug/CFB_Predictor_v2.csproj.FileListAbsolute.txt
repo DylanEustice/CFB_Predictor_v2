@@ -1,0 +1,6 @@
+C:\Users\Dylan\Documents\GitHub\CFB_Predictor_v2\CFB_Predictor_v2\bin\Debug\CFB_Predictor_v2.exe.config
+C:\Users\Dylan\Documents\GitHub\CFB_Predictor_v2\CFB_Predictor_v2\bin\Debug\CFB_Predictor_v2.exe
+C:\Users\Dylan\Documents\GitHub\CFB_Predictor_v2\CFB_Predictor_v2\bin\Debug\CFB_Predictor_v2.pdb
+C:\Users\Dylan\Documents\GitHub\CFB_Predictor_v2\CFB_Predictor_v2\obj\Debug\CFB_Predictor_v2.csprojResolveAssemblyReference.cache
+C:\Users\Dylan\Documents\GitHub\CFB_Predictor_v2\CFB_Predictor_v2\obj\Debug\CFB_Predictor_v2.exe
+C:\Users\Dylan\Documents\GitHub\CFB_Predictor_v2\CFB_Predictor_v2\obj\Debug\CFB_Predictor_v2.pdb
