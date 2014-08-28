@@ -109,8 +109,10 @@ namespace CFB_Predictor_v2
         public const int FIRST_PER_ATT = 81;    // first down per att
         public const int COMP_PER = 82;         // passing completion %
         public const int PASS_BKN_PER = 83;     // % of passes broken up
+        public const int YARD_PER_RUSH = 84;    // yards / rush att
+        public const int YARD_PER_PASS = 85;    // yards / rush att
 
-        public const int XTRA_DATA_PTS = 16;
+        public const int XTRA_DATA_PTS = 18;
         public const int N_DATA_PTS = TEAM_GAME_PTS + XTRA_DATA_PTS;
 
         // Team metrics only

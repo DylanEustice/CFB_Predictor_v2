@@ -26,6 +26,12 @@ namespace CFB_Predictor_v2
         public List<Game> Games = new List<Game>();
 
         //
+        // Blank constructor
+        public Team()
+        {
+        }
+
+        //
         // Constructor
         public Team(int code, string name, Conference conference)
         {
@@ -47,16 +53,36 @@ namespace CFB_Predictor_v2
         // Returns the season average of a stat
         public double GetSeasonAverage(int stat)
         {
-            return GetSeasonTotal(stat) / Games.Count;
+            double nGames = 0;
+            double total = GetSeasonTotal(stat, ref nGames);
+            if (nGames == 0)
+                return 0;
+            else
+                return total / nGames;
+        }
+
+        //
+        // Returns the season average of a stat for this team's opponent
+        public double GetOppSeasonAverage(int stat)
+        {
+            double nGames = 0;
+            double total = GetOppSeasonTotal(stat, ref nGames);
+            if (nGames == 0)
+                return 0;
+            else
+                return total / nGames;
         }
 
         //
         // Returns the season total of a stat
-        public double GetSeasonTotal(int stat)
+        public double GetSeasonTotal(int stat, ref double nGames)
         {
             double total = 0;
             foreach (Game G in Games)
             {
+                if (!Program.UseGame(G))
+                    continue;
+                nGames++;
                 if (ThisTeamHome(G))
                     total += G.HomeData[stat];
                 else
@@ -66,7 +92,25 @@ namespace CFB_Predictor_v2
         }
 
         //
-        // Returns this team from the game (home/visitor)
+        // Returns the season total of a stat
+        public double GetOppSeasonTotal(int stat, ref double nGames)
+        {
+            double total = 0;
+            foreach (Game G in Games)
+            {
+                if (!Program.UseGame(G))
+                    continue;
+                nGames++;
+                if (ThisTeamHome(G))
+                    total += G.VisitorData[stat];
+                else
+                    total += G.HomeData[stat];
+            }
+            return total;
+        }
+
+        //
+        // Returns true if this team is home
         public bool ThisTeamHome(Game G)
         {
             if (G.Home == this)

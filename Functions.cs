@@ -81,5 +81,12 @@ namespace CFB_Predictor_v2
             else
                 return (data[PASS_YARD] + 20 * data[PASS_TD] - 45 * data[PASS_INT]) / data[PASS_ATT];
         }
+
+        //
+        // Returns true if this game is acceptable for use
+        public static bool UseGame(Game G)
+        {
+            return true;
+        }
     }
 }

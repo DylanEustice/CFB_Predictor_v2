@@ -28,10 +28,12 @@ namespace CFB_Predictor_v2
         public Team Visitor;
         public double[] VisitorData = new double[Program.N_DATA_PTS];
         public double[] VisitorMetrics = new double[Program.METRIC_PTS];
+        public double[] VisitorOppMetrics = new double[Program.METRIC_PTS];
         // Home data
         public Team Home;
         public double[] HomeData = new double[Program.N_DATA_PTS];
         public double[] HomeMetrics = new double[Program.METRIC_PTS];
+        public double[] HomeOppMetrics = new double[Program.METRIC_PTS];
         // Who won?
         public bool HomeWin = false;
         public bool VisitorWin = false;
@@ -62,8 +64,7 @@ namespace CFB_Predictor_v2
                 Tie = true;
 
             // Get team's metrics going into this game
-            if (Season.PastSeasons.Count > 0)
-                GetTeamMetrics();
+            GetTeamMetrics();
         }
 
         //
@@ -99,6 +100,7 @@ namespace CFB_Predictor_v2
             }
         }
 
+        #region Get this team-game-stats array
         //
         // Gets the teams' data from the team-game-stats
         public void FindTeamGameStats()
@@ -150,19 +152,27 @@ namespace CFB_Predictor_v2
                 dataSet[Program.PASS_BKN_PER] = 0;
                 dataSet[Program.COMP_PER] = 0;
                 dataSet[Program.INT_PER_ATT] = 0;
+                dataSet[Program.YARD_PER_PASS] = 0;
             }
             else
             {
                 dataSet[Program.COMP_PER] = dataSet[Program.PASS_COMP] / dataSet[Program.PASS_ATT];
                 dataSet[Program.PASS_BKN_PER] = dataSet[Program.PASS_BROKEN_UP] / dataSet[Program.PASS_ATT];
                 dataSet[Program.INT_PER_ATT] = dataSet[Program.PASS_INT] / dataSet[Program.PASS_ATT];
+                dataSet[Program.YARD_PER_PASS] = dataSet[Program.PASS_YARD] / dataSet[Program.PASS_ATT];
             }
 
             // Handle 0 rush attempts
             if (dataSet[Program.RUSH_ATT] == 0)
+            {
                 dataSet[Program.FUM_PER_ATT] = 0;
+                dataSet[Program.YARD_PER_RUSH] = 0;
+            }
             else
+            {
                 dataSet[Program.FUM_PER_ATT] = dataSet[Program.FUMBLE_LOST] / dataSet[Program.RUSH_ATT];
+                dataSet[Program.YARD_PER_RUSH] = dataSet[Program.RUSH_YARD] / dataSet[Program.RUSH_ATT];
+            }
 
             // Handle no red zone attempts
             if (dataSet[Program.RED_ZONE_ATT] == 0)
@@ -176,14 +186,145 @@ namespace CFB_Predictor_v2
                 dataSet[Program.RZ_SCORE_PER] = (dataSet[Program.RED_ZONE_TD] + dataSet[Program.RED_ZONE_FG]) / dataSet[Program.RED_ZONE_ATT];
             }
         }
+        #endregion
 
+        #region Get these team's metrics
         //
         // Gets the metrics used to predict this game
         public void GetTeamMetrics()
         {
             // Get team-game-stats averages from last season
-            double[] homeTGSAvg = GetPreviousTGSAverages(Home);
-            double[] visitorTGSAvg = GetPreviousTGSAverages(Visitor);
+            double[] homeTGSAvg = new double[Program.TEAM_GAME_PTS];
+            double[] homeOppTGSAvg = new double[Program.TEAM_GAME_PTS];
+            double[] visitorTGSAvg = new double[Program.TEAM_GAME_PTS];
+            double[] visitorOppTGSAvg = new double[Program.TEAM_GAME_PTS];
+            if (Season.PastSeasons.Count > 0)   // If 0 index of the array is not 1, the values were not set (do not use)
+            {
+                homeTGSAvg = GetPreviousTGSAverages(Home);
+                homeOppTGSAvg = GetPreviousOppTGSAverages(Home);
+                visitorTGSAvg = GetPreviousTGSAverages(Visitor);
+                visitorOppTGSAvg = GetPreviousOppTGSAverages(Visitor);
+            }
+            bool usePrevHome = homeTGSAvg[0] == 1 ? true : false;           // determine if this is either team's 1st year
+            bool usePrevVisitor = visitorTGSAvg[0] == 1 ? true : false;
+
+            // Get advanced averages from last season
+            double[] homeAdvAvg = new double[Program.XTRA_DATA_PTS];
+            double[] homeOppAdvAvg = new double[Program.XTRA_DATA_PTS];
+            double[] visitorAdvAvg = new double[Program.XTRA_DATA_PTS];
+            double[] visitorOppAdvAvg = new double[Program.XTRA_DATA_PTS];
+            if (usePrevHome)
+                GetAdvancedPrevMetrics(Home, homeTGSAvg, homeOppTGSAvg, ref homeAdvAvg, ref homeOppAdvAvg);
+            if (usePrevVisitor)
+                GetAdvancedPrevMetrics(Visitor, visitorTGSAvg, visitorOppTGSAvg, ref visitorAdvAvg, ref visitorOppAdvAvg);
+
+        }
+
+        //
+        // Sets values for last seasons advanced metrics
+        public void GetAdvancedPrevMetrics(Team team, double[] TGSAvg, double[] oppTGSAvg, ref double[] advAvg, ref double[] oppAdvAvg)
+        {
+            Team prevTeam = new Team();             // get last season's team
+            FindPreviousTeam(team, ref prevTeam);
+
+            // Get this team's and the opponents' averages
+            GetPrevSimpleAverages(prevTeam, ref advAvg, TGSAvg);
+            GetOppPrevSimpleAverages(prevTeam, ref oppAdvAvg, TGSAvg);
+            GetPrevPassAverages(ref advAvg, TGSAvg);        // passing
+            GetPrevPassAverages(ref oppAdvAvg, TGSAvg);
+            GetPrevRushingAverages(ref advAvg, TGSAvg);     // rushing
+            GetPrevRushingAverages(ref oppAdvAvg, TGSAvg);
+            GetPrevRedZoneAverages(ref advAvg, TGSAvg);     // red zone
+            GetPrevRedZoneAverages(ref oppAdvAvg, TGSAvg);
+        }
+        #endregion
+
+        #region Get previous season averages
+        //
+        // Gets last season's simple advanced averages
+        public void GetPrevSimpleAverages(Team prevTeam, ref double[] advAvg, double[] TGSAvg)
+        {
+            int TGSidx = Program.TEAM_GAME_PTS;     // for shorter redundant indexing
+            advAvg[Program.TOTAL_YARDS - TGSidx] = prevTeam.GetSeasonAverage(Program.TOTAL_YARDS);
+            advAvg[Program.TO_LOST - TGSidx] = prevTeam.GetSeasonAverage(Program.TO_LOST);
+            advAvg[Program.TO_GAIN - TGSidx] = prevTeam.GetSeasonAverage(Program.TO_GAIN);
+            advAvg[Program.TO_NET - TGSidx] = prevTeam.GetSeasonAverage(Program.TO_NET);
+            advAvg[Program.TOTAL_ATT - TGSidx] = prevTeam.GetSeasonAverage(Program.TOTAL_ATT);
+            advAvg[Program.TD_PER_ATT - TGSidx] = (TGSAvg[Program.PASS_TD] + TGSAvg[Program.RUSH_TD]) / advAvg[Program.TOTAL_ATT - TGSidx];
+            advAvg[Program.FIRST_PER_ATT - TGSidx] = (TGSAvg[Program.FIRST_DOWN_PASS] + TGSAvg[Program.FIRST_DOWN_RUSH]) / advAvg[Program.TOTAL_ATT - TGSidx];
+        }
+        
+        //
+        // Gets the previous season averages for complex passing stats
+        public void GetPrevPassAverages(ref double[] advAvg, double[] TGSAvg)
+        {
+            int TGSidx = Program.TEAM_GAME_PTS;     // for shorter redundant indexing
+            if (TGSAvg[Program.PASS_ATT] == 0)
+            {
+                advAvg[Program.PASS_BKN_PER - TGSidx] = 0;
+                advAvg[Program.COMP_PER - TGSidx] = 0;
+                advAvg[Program.INT_PER_ATT - TGSidx] = 0;
+                advAvg[Program.YARD_PER_PASS - TGSidx] = 0;
+                advAvg[Program.ADJ_PASS_AVG - TGSidx] = 0;
+            }
+            else
+            {
+                advAvg[Program.COMP_PER - TGSidx] = TGSAvg[Program.PASS_COMP] / TGSAvg[Program.PASS_ATT];
+                advAvg[Program.PASS_BKN_PER - TGSidx] = TGSAvg[Program.PASS_BROKEN_UP] / TGSAvg[Program.PASS_ATT];
+                advAvg[Program.INT_PER_ATT - TGSidx] = TGSAvg[Program.PASS_INT] / TGSAvg[Program.PASS_ATT];
+                advAvg[Program.YARD_PER_PASS - TGSidx] = TGSAvg[Program.PASS_YARD] / TGSAvg[Program.PASS_ATT];
+                advAvg[Program.ADJ_PASS_AVG - TGSidx] = (TGSAvg[Program.PASS_YARD] + 20 * TGSAvg[Program.PASS_TD] - 45 * TGSAvg[Program.PASS_INT]) / TGSAvg[Program.PASS_ATT];
+            }
+        }
+
+        //
+        // Gets the previous season averages for complex rushing stats
+        public void GetPrevRushingAverages(ref double[] advAvg, double[] TGSAvg)
+        {
+            int TGSidx = Program.TEAM_GAME_PTS;     // for shorter redundant indexing
+            if (TGSAvg[Program.RUSH_ATT] == 0)
+            {
+                advAvg[Program.FUM_PER_ATT - TGSidx] = 0;
+                advAvg[Program.YARD_PER_RUSH - TGSidx] = 0;
+                advAvg[Program.ADJ_RUSH_AVG - TGSidx] = 0;
+            }
+            else
+            {
+                advAvg[Program.FUM_PER_ATT - TGSidx] = TGSAvg[Program.FUMBLE_LOST] / TGSAvg[Program.RUSH_ATT];
+                advAvg[Program.YARD_PER_RUSH - TGSidx] = TGSAvg[Program.RUSH_YARD] / TGSAvg[Program.RUSH_ATT];
+                advAvg[Program.ADJ_RUSH_AVG - TGSidx] = (TGSAvg[Program.RUSH_YARD] + 20 * TGSAvg[Program.RUSH_TD] + 9 * TGSAvg[Program.FIRST_DOWN_RUSH]) / TGSAvg[Program.RUSH_ATT];
+            }
+        }
+        
+        //
+        // Gets the previous season averages for complex red zone stats
+        public void GetPrevRedZoneAverages(ref double[] advAvg, double[] TGSAvg)
+        {
+            int TGSidx = Program.TEAM_GAME_PTS;     // for shorter redundant indexing
+            if (TGSAvg[Program.RED_ZONE_ATT] == 0)
+            {
+                advAvg[Program.RZ_TD_PER - TGSidx] = 0;
+                advAvg[Program.RZ_SCORE_PER - TGSidx] = 0;
+            }
+            else
+            {
+                advAvg[Program.RZ_TD_PER - TGSidx] = TGSAvg[Program.RED_ZONE_TD] / TGSAvg[Program.RED_ZONE_ATT];
+                advAvg[Program.RZ_SCORE_PER - TGSidx] = (TGSAvg[Program.RED_ZONE_TD] + TGSAvg[Program.RED_ZONE_FG]) / TGSAvg[Program.RED_ZONE_ATT];
+            }
+        }
+
+        //
+        // Gets last season's opponents' simple advanced averages
+        public void GetOppPrevSimpleAverages(Team prevTeam, ref double[] oppAdvAvg, double[] TGSAvg)
+        {
+            int TGSidx = Program.TEAM_GAME_PTS;     // for shorter redundant indexing
+            oppAdvAvg[Program.TOTAL_YARDS - TGSidx] = prevTeam.GetOppSeasonAverage(Program.TOTAL_YARDS);
+            oppAdvAvg[Program.TO_LOST - TGSidx] = prevTeam.GetOppSeasonAverage(Program.TO_LOST);
+            oppAdvAvg[Program.TO_GAIN - TGSidx] = prevTeam.GetOppSeasonAverage(Program.TO_GAIN);
+            oppAdvAvg[Program.TO_NET - TGSidx] = prevTeam.GetOppSeasonAverage(Program.TO_NET);
+            oppAdvAvg[Program.TOTAL_ATT - TGSidx] = prevTeam.GetOppSeasonAverage(Program.TOTAL_ATT);
+            oppAdvAvg[Program.TD_PER_ATT - TGSidx] = (TGSAvg[Program.PASS_TD] + TGSAvg[Program.RUSH_TD]) / oppAdvAvg[Program.TOTAL_ATT - TGSidx];
+            oppAdvAvg[Program.FIRST_PER_ATT - TGSidx] = (TGSAvg[Program.FIRST_DOWN_PASS] + TGSAvg[Program.FIRST_DOWN_RUSH]) / oppAdvAvg[Program.TOTAL_ATT - TGSidx];
         }
 
         //
@@ -191,12 +332,49 @@ namespace CFB_Predictor_v2
         public double[] GetPreviousTGSAverages(Team team)
         {
             double[] teamGameAverages = new double[Program.TEAM_GAME_PTS];
-            int teamNum = 0;   // find the team from last season
-            while (Season.PastSeasons[Season.PastSeasons.Count - 1].Teams[teamNum].Code != team.Code)
-                teamNum++;
+
+            // Find last season's team
+            Team prevTeam = new Team();
+            if (!FindPreviousTeam(team, ref prevTeam))
+                return teamGameAverages;
+
             for (int i = 2; i < Program.TEAM_GAME_PTS; i++)
-                teamGameAverages[i] = Season.PastSeasons[Season.PastSeasons.Count - 1].Teams[teamNum].GetSeasonAverage(i);
+                teamGameAverages[i] = prevTeam.GetSeasonAverage(i);
+            teamGameAverages[0] = 1;    // values set flag
             return teamGameAverages;
+        }
+
+        //
+        // Gets this team's opponents' last season averages for team-game-stats data
+        public double[] GetPreviousOppTGSAverages(Team team)
+        {
+            double[] teamGameAverages = new double[Program.TEAM_GAME_PTS];
+
+            // Find last season's team
+            Team prevTeam = new Team();
+            if (!FindPreviousTeam(team, ref prevTeam))
+                return teamGameAverages;
+
+            for (int i = 2; i < Program.TEAM_GAME_PTS; i++)
+                teamGameAverages[i] = prevTeam.GetOppSeasonAverage(i);
+            teamGameAverages[0] = 1;    // values set flag
+            return teamGameAverages;
+        }
+        #endregion
+
+        //
+        // Gets reference to the previous season's team. Returns false if that team did not have a previous season.
+        public bool FindPreviousTeam(Team team, ref Team prevTeam)
+        {
+            int teamNum = 0;
+            while (Season.PastSeasons[Season.PastSeasons.Count - 1].Teams[teamNum].Code != team.Code)
+            {
+                teamNum++;
+                if (Season.PastSeasons[Season.PastSeasons.Count - 1].Teams.Count <= teamNum)    // 1st year in D1 for this team
+                    return false;
+            }
+            prevTeam = Season.PastSeasons[Season.PastSeasons.Count - 1].Teams[teamNum];
+            return true;
         }
     }
 }
