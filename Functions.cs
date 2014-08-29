@@ -83,6 +83,13 @@ namespace CFB_Predictor_v2
         }
 
         //
+        // Returns the pythagorean expectation given RS and RA
+        public static double GetPythagExp(double RS, double RA)
+        {
+            return Math.Pow(RS, PY_EXP) / (Math.Pow(RA, PY_EXP) + Math.Pow(RS, PY_EXP));
+        }
+
+        //
         // Returns true if this game is acceptable for use
         public static bool UseGame(Game G)
         {

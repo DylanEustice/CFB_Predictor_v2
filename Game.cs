@@ -29,11 +29,13 @@ namespace CFB_Predictor_v2
         public double[] VisitorData = new double[Program.N_DATA_PTS];
         public double[] VisitorMetrics = new double[Program.METRIC_PTS];
         public double[] VisitorOppMetrics = new double[Program.METRIC_PTS];
+        public bool NoVisitorMetrics = false;
         // Home data
         public Team Home;
         public double[] HomeData = new double[Program.N_DATA_PTS];
         public double[] HomeMetrics = new double[Program.METRIC_PTS];
         public double[] HomeOppMetrics = new double[Program.METRIC_PTS];
+        public bool NoHomeMetrics = false;
         // Who won?
         public bool HomeWin = false;
         public bool VisitorWin = false;
@@ -52,8 +54,9 @@ namespace CFB_Predictor_v2
             int homeCode = (int)(Math.Floor(Code / Math.Pow(10, 8)) % Math.Pow(10, 4));
             Date = (int)(Code % Math.Pow(10, 8));
 
-            FindTeams(visitorCode, homeCode);   // Find visitor and home teams
-            FindTeamGameStats();                // Get visitor and home data
+            // Find visitor and home teams, then get their game data
+            FindTeams(visitorCode, homeCode);
+            FindTeamGameStats();
 
             // Determine winner
             if (HomeData[Program.POINTS] > VisitorData[Program.POINTS])
@@ -63,8 +66,9 @@ namespace CFB_Predictor_v2
             else
                 Tie = true;
 
-            // Get team's metrics going into this game
-            GetTeamMetrics();
+            // Add this game to each team's array
+            Home.InsertGame(this);
+            Visitor.InsertGame(this);
         }
 
         //
@@ -111,7 +115,7 @@ namespace CFB_Predictor_v2
                 row++;
             while ((long)Season.TeamGameStats[row][Program.GAME_CODE] != Code)          // then find this game
                 row++;
-            for (int i = 0; i < Program.N_DATA_PTS - Program.XTRA_DATA_PTS; i++)        // then read in statistics
+            for (int i = 0; i < Program.TEAM_GAME_PTS; i++)                             // then read in statistics
                 VisitorData[i] = Season.TeamGameStats[row][i];
 
             // Put in advanced stats
@@ -124,7 +128,7 @@ namespace CFB_Predictor_v2
                 row++;
             while ((long)Season.TeamGameStats[row][Program.GAME_CODE] != Code)          // then find this game
                 row++;
-            for (int i = 0; i < Program.N_DATA_PTS - Program.XTRA_DATA_PTS; i++)        // then read in statistics
+            for (int i = 0; i < Program.TEAM_GAME_PTS; i++)                             // then read in statistics
                 HomeData[i] = Season.TeamGameStats[row][i];
 
             // Put in advanced stats
@@ -136,13 +140,16 @@ namespace CFB_Predictor_v2
         // Calculates the advanced stats for this data set
         public void CalculateAdvancedStats(ref double[] dataSet)
         {
+            // Simple stats
             dataSet[Program.TOTAL_YARDS] = dataSet[Program.PASS_YARD] + dataSet[Program.RUSH_YARD];
             dataSet[Program.TO_LOST] = dataSet[Program.FUMBLE_LOST] + dataSet[Program.PASS_INT];
             dataSet[Program.TO_GAIN] = dataSet[Program.FUM_RET] + dataSet[Program.INT_RET];
             dataSet[Program.TO_NET] = dataSet[Program.TO_GAIN] - dataSet[Program.TO_LOST];
+            dataSet[Program.TOTAL_ATT] = dataSet[Program.PASS_ATT] + dataSet[Program.RUSH_ATT];
+
+            // Advanced stats
             dataSet[Program.ADJ_RUSH_AVG] = Program.AdjRushPerAtt(dataSet);
             dataSet[Program.ADJ_PASS_AVG] = Program.AdjPassPerAtt(dataSet);
-            dataSet[Program.TOTAL_ATT] = dataSet[Program.PASS_ATT] + dataSet[Program.RUSH_ATT];
             dataSet[Program.TD_PER_ATT] = (dataSet[Program.PASS_TD] + dataSet[Program.RUSH_TD]) / dataSet[Program.TOTAL_ATT];
             dataSet[Program.FIRST_PER_ATT] = (dataSet[Program.FIRST_DOWN_PASS] + dataSet[Program.FIRST_DOWN_RUSH]) / dataSet[Program.TOTAL_ATT];
 
@@ -194,169 +201,263 @@ namespace CFB_Predictor_v2
         public void GetTeamMetrics()
         {
             // Get team-game-stats averages from last season
-            double[] homeTGSAvg = new double[Program.TEAM_GAME_PTS];
-            double[] homeOppTGSAvg = new double[Program.TEAM_GAME_PTS];
-            double[] visitorTGSAvg = new double[Program.TEAM_GAME_PTS];
-            double[] visitorOppTGSAvg = new double[Program.TEAM_GAME_PTS];
+            double[] homePrevSimpleAvg = new double[Program.SIMPLE_PTS];
+            double[] homePrevOppSimpleAvg = new double[Program.SIMPLE_PTS];
+            double[] visitorPrevSimpleAvg = new double[Program.SIMPLE_PTS];
+            double[] visitorPrevOppSimpleAvg = new double[Program.SIMPLE_PTS];
             if (Season.PastSeasons.Count > 0)   // If 0 index of the array is not 1, the values were not set (do not use)
             {
-                homeTGSAvg = GetPreviousTGSAverages(Home);
-                homeOppTGSAvg = GetPreviousOppTGSAverages(Home);
-                visitorTGSAvg = GetPreviousTGSAverages(Visitor);
-                visitorOppTGSAvg = GetPreviousOppTGSAverages(Visitor);
+                homePrevSimpleAvg = GetPrevSimpleAverages(Home);
+                homePrevOppSimpleAvg = GetPrevOppSimpleAverages(Home);
+                visitorPrevSimpleAvg = GetPrevSimpleAverages(Visitor);
+                visitorPrevOppSimpleAvg = GetPrevOppSimpleAverages(Visitor);
             }
-            bool usePrevHome = homeTGSAvg[0] == 1 ? true : false;           // determine if this is either team's 1st year
-            bool usePrevVisitor = visitorTGSAvg[0] == 1 ? true : false;
+            bool usePrevHome = homePrevSimpleAvg[0] == 1 ? true : false;           // determine if this is either team's 1st year
+            bool usePrevVisitor = visitorPrevSimpleAvg[0] == 1 ? true : false;
 
-            // Get advanced averages from last season
-            double[] homeAdvAvg = new double[Program.XTRA_DATA_PTS];
-            double[] homeOppAdvAvg = new double[Program.XTRA_DATA_PTS];
-            double[] visitorAdvAvg = new double[Program.XTRA_DATA_PTS];
-            double[] visitorOppAdvAvg = new double[Program.XTRA_DATA_PTS];
-            if (usePrevHome)
-                GetAdvancedPrevMetrics(Home, homeTGSAvg, homeOppTGSAvg, ref homeAdvAvg, ref homeOppAdvAvg);
-            if (usePrevVisitor)
-                GetAdvancedPrevMetrics(Visitor, visitorTGSAvg, visitorOppTGSAvg, ref visitorAdvAvg, ref visitorOppAdvAvg);
+            // Get simple stats lists for this season
+            List<double[]> homeSimpleLists = Home.ReturnSimpleLists(this);
+            List<double[]> homeOppSimpleLists = Home.ReturnOppSimpleLists(this);
+            List<double[]> visitorSimpleLists = Visitor.ReturnSimpleLists(this);
+            List<double[]> visitorOppSimpleLists = Visitor.ReturnOppSimpleLists(this);
 
+            // Find simple averages for the metrics
+            double[] homeMetricTotals = new double[Program.METRIC_PTS];
+            double[] homeOppMetricTotals = new double[Program.METRIC_PTS];
+            double[] visitorMetricTotals = new double[Program.METRIC_PTS];
+            double[] visitorOppMetricTotals = new double[Program.METRIC_PTS];
+            InitMetricTotals(usePrevHome, ref homeMetricTotals, ref homeOppMetricTotals, homePrevSimpleAvg, homePrevOppSimpleAvg);
+            InitMetricTotals(usePrevVisitor, ref visitorMetricTotals, ref visitorOppMetricTotals, visitorPrevSimpleAvg, visitorPrevOppSimpleAvg);
+
+            // Get home averages
+            AddSeasonMetrics(ref homeMetricTotals, ref homeOppMetricTotals, homeSimpleLists, homeOppSimpleLists);
+            double nHomeGames = homeSimpleLists.Count + (usePrevHome ? 1 : 0);
+            for (int i = 2; i < homeMetricTotals.Length; i++)
+            {
+                HomeMetrics[i] = homeMetricTotals[i] / nHomeGames;
+                HomeOppMetrics[i] = homeOppMetricTotals[i] / nHomeGames;
+            }
+            if (nHomeGames == 0)
+                NoHomeMetrics = true;
+
+            // Get visitor averages
+            AddSeasonMetrics(ref visitorMetricTotals, ref visitorOppMetricTotals, visitorSimpleLists, visitorOppSimpleLists);
+            double nVisitorGames = visitorSimpleLists.Count + (usePrevVisitor ? 1 : 0);
+            for (int i = 2; i < visitorMetricTotals.Length; i++)
+            {
+                VisitorMetrics[i] = visitorMetricTotals[i] / nVisitorGames;
+                VisitorOppMetrics[i] = visitorOppMetricTotals[i] / nVisitorGames;
+            }
+            if (nVisitorGames == 0)
+                NoVisitorMetrics = true;
+
+            // Get advanced metrics
+            GetAdvancedMetrics();
         }
 
         //
-        // Sets values for last seasons advanced metrics
-        public void GetAdvancedPrevMetrics(Team team, double[] TGSAvg, double[] oppTGSAvg, ref double[] advAvg, ref double[] oppAdvAvg)
+        // Initializes the totals array
+        public void InitMetricTotals(bool usePrev, ref double[] metricTotals, ref double[] oppMetricTotals, double[] prevSimple, double[] prevOppSimple)
         {
-            Team prevTeam = new Team();             // get last season's team
-            FindPreviousTeam(team, ref prevTeam);
+            if (usePrev)    // initialize with previous stats if they're available
+            {
+                for (int i = 2; i < prevSimple.Length; i++)
+                {
+                    metricTotals[i] = prevSimple[i];
+                    oppMetricTotals[i] = prevOppSimple[i];
+                }
+            }
+        }
 
-            // Get this team's and the opponents' averages
-            GetPrevSimpleAverages(prevTeam, ref advAvg, TGSAvg);
-            GetOppPrevSimpleAverages(prevTeam, ref oppAdvAvg, TGSAvg);
-            GetPrevPassAverages(ref advAvg, TGSAvg);        // passing
-            GetPrevPassAverages(ref oppAdvAvg, TGSAvg);
-            GetPrevRushingAverages(ref advAvg, TGSAvg);     // rushing
-            GetPrevRushingAverages(ref oppAdvAvg, TGSAvg);
-            GetPrevRedZoneAverages(ref advAvg, TGSAvg);     // red zone
-            GetPrevRedZoneAverages(ref oppAdvAvg, TGSAvg);
+        //
+        // Adds this season's stats to the metrics array
+        public void AddSeasonMetrics(ref double[] metricTotals, ref double[] oppMetricTotals, List<double[]> simpleLists, List<double[]> oppSimpleLists)
+        {
+            for (int i = 0; i < simpleLists.Count; i++)
+            {
+                double[] simpleStats = simpleLists[i];
+                double[] simpleOppStats = oppSimpleLists[i];
+                for (int j = 2; j < simpleStats.Length; j++)
+                {
+                    metricTotals[j] += simpleStats[j];
+                    oppMetricTotals[j] += simpleOppStats[j];
+                }
+            }
+        }
+
+        //
+        // Calculates advanced metrics for this game
+        public void GetAdvancedMetrics()
+        {
+            // Get all passing metrics
+            GetPassMetrics(ref HomeMetrics);
+            GetPassMetrics(ref HomeOppMetrics);
+            GetPassMetrics(ref VisitorMetrics);
+            GetPassMetrics(ref VisitorOppMetrics);
+
+            // Get all rushing metrics
+            GetRushMetrics(ref HomeMetrics);
+            GetRushMetrics(ref HomeOppMetrics);
+            GetRushMetrics(ref VisitorMetrics);
+            GetRushMetrics(ref VisitorOppMetrics);
+
+            // Get all red zone metrics
+            GetRedZoneMetrics(ref HomeMetrics);
+            GetRedZoneMetrics(ref HomeOppMetrics);
+            GetRedZoneMetrics(ref VisitorMetrics);
+            GetRedZoneMetrics(ref VisitorOppMetrics);
+
+            // Get all red zone metrics
+            GetMiscMetrics(ref HomeMetrics);
+            GetMiscMetrics(ref HomeOppMetrics);
+            GetMiscMetrics(ref VisitorMetrics);
+            GetMiscMetrics(ref VisitorOppMetrics);
+
+            GetPythagExpMetrics();
         }
         #endregion
 
-        #region Get previous season averages
-        //
-        // Gets last season's simple advanced averages
-        public void GetPrevSimpleAverages(Team prevTeam, ref double[] advAvg, double[] TGSAvg)
-        {
-            int TGSidx = Program.TEAM_GAME_PTS;     // for shorter redundant indexing
-            advAvg[Program.TOTAL_YARDS - TGSidx] = prevTeam.GetSeasonAverage(Program.TOTAL_YARDS);
-            advAvg[Program.TO_LOST - TGSidx] = prevTeam.GetSeasonAverage(Program.TO_LOST);
-            advAvg[Program.TO_GAIN - TGSidx] = prevTeam.GetSeasonAverage(Program.TO_GAIN);
-            advAvg[Program.TO_NET - TGSidx] = prevTeam.GetSeasonAverage(Program.TO_NET);
-            advAvg[Program.TOTAL_ATT - TGSidx] = prevTeam.GetSeasonAverage(Program.TOTAL_ATT);
-            advAvg[Program.TD_PER_ATT - TGSidx] = (TGSAvg[Program.PASS_TD] + TGSAvg[Program.RUSH_TD]) / advAvg[Program.TOTAL_ATT - TGSidx];
-            advAvg[Program.FIRST_PER_ATT - TGSidx] = (TGSAvg[Program.FIRST_DOWN_PASS] + TGSAvg[Program.FIRST_DOWN_RUSH]) / advAvg[Program.TOTAL_ATT - TGSidx];
-        }
-        
+        #region Calculate advanced metrics
         //
         // Gets the previous season averages for complex passing stats
-        public void GetPrevPassAverages(ref double[] advAvg, double[] TGSAvg)
+        public void GetPassMetrics(ref double[] metrics)
         {
-            int TGSidx = Program.TEAM_GAME_PTS;     // for shorter redundant indexing
-            if (TGSAvg[Program.PASS_ATT] == 0)
+            if (metrics[Program.PASS_ATT] == 0)
             {
-                advAvg[Program.PASS_BKN_PER - TGSidx] = 0;
-                advAvg[Program.COMP_PER - TGSidx] = 0;
-                advAvg[Program.INT_PER_ATT - TGSidx] = 0;
-                advAvg[Program.YARD_PER_PASS - TGSidx] = 0;
-                advAvg[Program.ADJ_PASS_AVG - TGSidx] = 0;
+                metrics[Program.COMP_PER] = 0;
+                metrics[Program.PASS_BKN_PER] = 0;
+                metrics[Program.INT_PER_ATT] = 0;
+                metrics[Program.YARD_PER_PASS] = 0;
+                metrics[Program.ADJ_PASS_AVG] = 0;
             }
             else
             {
-                advAvg[Program.COMP_PER - TGSidx] = TGSAvg[Program.PASS_COMP] / TGSAvg[Program.PASS_ATT];
-                advAvg[Program.PASS_BKN_PER - TGSidx] = TGSAvg[Program.PASS_BROKEN_UP] / TGSAvg[Program.PASS_ATT];
-                advAvg[Program.INT_PER_ATT - TGSidx] = TGSAvg[Program.PASS_INT] / TGSAvg[Program.PASS_ATT];
-                advAvg[Program.YARD_PER_PASS - TGSidx] = TGSAvg[Program.PASS_YARD] / TGSAvg[Program.PASS_ATT];
-                advAvg[Program.ADJ_PASS_AVG - TGSidx] = (TGSAvg[Program.PASS_YARD] + 20 * TGSAvg[Program.PASS_TD] - 45 * TGSAvg[Program.PASS_INT]) / TGSAvg[Program.PASS_ATT];
+                metrics[Program.COMP_PER] = metrics[Program.PASS_COMP] / metrics [Program.PASS_ATT];
+                metrics[Program.PASS_BKN_PER] = metrics[Program.PASS_BROKEN_UP] / metrics[Program.PASS_ATT];
+                metrics[Program.INT_PER_ATT] = metrics[Program.PASS_INT] / metrics[Program.PASS_ATT];
+                metrics[Program.YARD_PER_PASS] = metrics[Program.PASS_YARD] / metrics[Program.PASS_ATT];
+                metrics[Program.ADJ_PASS_AVG] = (metrics[Program.PASS_YARD] + 20 * metrics[Program.PASS_TD] - 45 * metrics[Program.PASS_INT]) / metrics[Program.PASS_ATT];
             }
         }
 
         //
         // Gets the previous season averages for complex rushing stats
-        public void GetPrevRushingAverages(ref double[] advAvg, double[] TGSAvg)
+        public void GetRushMetrics(ref double[] metrics)
         {
-            int TGSidx = Program.TEAM_GAME_PTS;     // for shorter redundant indexing
-            if (TGSAvg[Program.RUSH_ATT] == 0)
+            if (metrics[Program.RUSH_ATT] == 0)
             {
-                advAvg[Program.FUM_PER_ATT - TGSidx] = 0;
-                advAvg[Program.YARD_PER_RUSH - TGSidx] = 0;
-                advAvg[Program.ADJ_RUSH_AVG - TGSidx] = 0;
+                metrics[Program.FUM_PER_ATT] = 0;
+                metrics[Program.YARD_PER_RUSH] = 0;
+                metrics[Program.ADJ_RUSH_AVG] = 0;
             }
             else
             {
-                advAvg[Program.FUM_PER_ATT - TGSidx] = TGSAvg[Program.FUMBLE_LOST] / TGSAvg[Program.RUSH_ATT];
-                advAvg[Program.YARD_PER_RUSH - TGSidx] = TGSAvg[Program.RUSH_YARD] / TGSAvg[Program.RUSH_ATT];
-                advAvg[Program.ADJ_RUSH_AVG - TGSidx] = (TGSAvg[Program.RUSH_YARD] + 20 * TGSAvg[Program.RUSH_TD] + 9 * TGSAvg[Program.FIRST_DOWN_RUSH]) / TGSAvg[Program.RUSH_ATT];
+                metrics[Program.FUM_PER_ATT] = metrics[Program.FUMBLE_LOST] / metrics[Program.RUSH_ATT];
+                metrics[Program.YARD_PER_RUSH] = metrics[Program.RUSH_YARD] / metrics[Program.RUSH_ATT];
+                metrics[Program.ADJ_RUSH_AVG] = (metrics[Program.RUSH_YARD] + 20 * metrics[Program.RUSH_TD] + 9 * metrics[Program.FIRST_DOWN_RUSH]) / metrics[Program.RUSH_ATT];
             }
         }
         
         //
         // Gets the previous season averages for complex red zone stats
-        public void GetPrevRedZoneAverages(ref double[] advAvg, double[] TGSAvg)
+        public void GetRedZoneMetrics(ref double[] metrics)
         {
-            int TGSidx = Program.TEAM_GAME_PTS;     // for shorter redundant indexing
-            if (TGSAvg[Program.RED_ZONE_ATT] == 0)
+            if (metrics[Program.RED_ZONE_ATT] == 0)
             {
-                advAvg[Program.RZ_TD_PER - TGSidx] = 0;
-                advAvg[Program.RZ_SCORE_PER - TGSidx] = 0;
+                metrics[Program.RZ_TD_PER] = 0;
+                metrics[Program.RZ_SCORE_PER] = 0;
             }
             else
             {
-                advAvg[Program.RZ_TD_PER - TGSidx] = TGSAvg[Program.RED_ZONE_TD] / TGSAvg[Program.RED_ZONE_ATT];
-                advAvg[Program.RZ_SCORE_PER - TGSidx] = (TGSAvg[Program.RED_ZONE_TD] + TGSAvg[Program.RED_ZONE_FG]) / TGSAvg[Program.RED_ZONE_ATT];
+                metrics[Program.RZ_TD_PER] = metrics[Program.RED_ZONE_TD] / metrics[Program.RED_ZONE_ATT];
+                metrics[Program.RZ_SCORE_PER] = (metrics[Program.RED_ZONE_TD] + metrics[Program.RED_ZONE_FG]) / metrics[Program.RED_ZONE_ATT];
             }
         }
 
         //
-        // Gets last season's opponents' simple advanced averages
-        public void GetOppPrevSimpleAverages(Team prevTeam, ref double[] oppAdvAvg, double[] TGSAvg)
+        // Gets the rest of the advanced metrics
+        public void GetMiscMetrics(ref double[] metrics)
         {
-            int TGSidx = Program.TEAM_GAME_PTS;     // for shorter redundant indexing
-            oppAdvAvg[Program.TOTAL_YARDS - TGSidx] = prevTeam.GetOppSeasonAverage(Program.TOTAL_YARDS);
-            oppAdvAvg[Program.TO_LOST - TGSidx] = prevTeam.GetOppSeasonAverage(Program.TO_LOST);
-            oppAdvAvg[Program.TO_GAIN - TGSidx] = prevTeam.GetOppSeasonAverage(Program.TO_GAIN);
-            oppAdvAvg[Program.TO_NET - TGSidx] = prevTeam.GetOppSeasonAverage(Program.TO_NET);
-            oppAdvAvg[Program.TOTAL_ATT - TGSidx] = prevTeam.GetOppSeasonAverage(Program.TOTAL_ATT);
-            oppAdvAvg[Program.TD_PER_ATT - TGSidx] = (TGSAvg[Program.PASS_TD] + TGSAvg[Program.RUSH_TD]) / oppAdvAvg[Program.TOTAL_ATT - TGSidx];
-            oppAdvAvg[Program.FIRST_PER_ATT - TGSidx] = (TGSAvg[Program.FIRST_DOWN_PASS] + TGSAvg[Program.FIRST_DOWN_RUSH]) / oppAdvAvg[Program.TOTAL_ATT - TGSidx];
+            metrics[Program.TD_PER_ATT] = (metrics[Program.RUSH_TD] + metrics[Program.PASS_TD]) / metrics[Program.TOTAL_ATT];
+            metrics[Program.TD_PER_ATT] = (metrics[Program.FIRST_DOWN_RUSH] + metrics[Program.FIRST_DOWN_PASS]) / metrics[Program.TOTAL_ATT];
         }
 
         //
-        // Gets this team's last season average for team-game-stats data
-        public double[] GetPreviousTGSAverages(Team team)
+        // Gets the pythagorean expectations for the metrics
+        public void GetPythagExpMetrics()
         {
-            double[] teamGameAverages = new double[Program.TEAM_GAME_PTS];
+            // Get home and visitor pythagorean expectations
+            if (Double.IsNaN(HomeMetrics[Program.POINTS]) || Double.IsNaN(HomeOppMetrics[Program.POINTS]))
+                HomeMetrics[Program.PYTHAG_EXPECT] = 0.5;
+            else
+                HomeMetrics[Program.PYTHAG_EXPECT] = Program.GetPythagExp(HomeMetrics[Program.POINTS], HomeOppMetrics[Program.POINTS]);
+
+            if (Double.IsNaN(VisitorMetrics[Program.POINTS]) || Double.IsNaN(VisitorMetrics[Program.POINTS]))
+                VisitorMetrics[Program.PYTHAG_EXPECT] = 0.5;
+            else
+                VisitorMetrics[Program.PYTHAG_EXPECT] = Program.GetPythagExp(VisitorMetrics[Program.POINTS], VisitorOppMetrics[Program.POINTS]);
+
+            // Get home and visitor previous opponents' average pythagorean expectation
+            double homeOppTotal = 0;        // home
+            double homeGames = 0;
+            foreach (Game G in Home.Games)
+            {
+                if (G.Date < Date && Program.UseGame(G))
+                {
+                    homeOppTotal += (G.Home == Home) ? G.VisitorMetrics[Program.PYTHAG_EXPECT] : G.HomeMetrics[Program.PYTHAG_EXPECT];
+                    homeGames++;
+                }
+            }
+            HomeOppMetrics[Program.PYTHAG_EXPECT] = (homeGames > 0) ? homeOppTotal / homeGames : 0.5;
+            double visitorOppTotal = 0;     // visitor
+            double visitorGames = 0;
+            foreach (Game G in Visitor.Games)
+            {
+                if (G.Date < Date && Program.UseGame(G))
+                {
+                    visitorOppTotal += (G.Visitor == Visitor) ? G.HomeMetrics[Program.PYTHAG_EXPECT] : G.VisitorMetrics[Program.PYTHAG_EXPECT];
+                    visitorGames++;
+                }
+            }
+            VisitorOppMetrics[Program.PYTHAG_EXPECT] = (visitorGames > 0) ? visitorOppTotal / visitorGames : 0.5;
+        }
+        #endregion
+
+        #region Get previous season averages
+        //
+        // Gets this team's last season average for simple averages data
+        public double[] GetPrevSimpleAverages(Team team)
+        {
+            double[] teamGameAverages = new double[Program.SIMPLE_PTS];
 
             // Find last season's team
             Team prevTeam = new Team();
             if (!FindPreviousTeam(team, ref prevTeam))
                 return teamGameAverages;
 
-            for (int i = 2; i < Program.TEAM_GAME_PTS; i++)
+            // Get averages
+            for (int i = 2; i < teamGameAverages.Length; i++)
                 teamGameAverages[i] = prevTeam.GetSeasonAverage(i);
+
             teamGameAverages[0] = 1;    // values set flag
             return teamGameAverages;
         }
 
         //
-        // Gets this team's opponents' last season averages for team-game-stats data
-        public double[] GetPreviousOppTGSAverages(Team team)
+        // Gets this team's opponents' last season averages for simple averages data
+        public double[] GetPrevOppSimpleAverages(Team team)
         {
-            double[] teamGameAverages = new double[Program.TEAM_GAME_PTS];
+            double[] teamGameAverages = new double[Program.SIMPLE_PTS];
 
             // Find last season's team
             Team prevTeam = new Team();
             if (!FindPreviousTeam(team, ref prevTeam))
                 return teamGameAverages;
 
-            for (int i = 2; i < Program.TEAM_GAME_PTS; i++)
+            // Get averages
+            for (int i = 2; i < teamGameAverages.Length; i++)
                 teamGameAverages[i] = prevTeam.GetOppSeasonAverage(i);
+
             teamGameAverages[0] = 1;    // values set flag
             return teamGameAverages;
         }

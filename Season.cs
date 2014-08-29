@@ -57,8 +57,8 @@ namespace CFB_Predictor_v2
 
             // Build games
             BuildGameList();
-            foreach (Team T in Teams)
-                T.GetGames(Games);
+            foreach (Game G in Games)
+                G.GetTeamMetrics();
         }
 
         //
@@ -100,11 +100,13 @@ namespace CFB_Predictor_v2
             {
                 bool alreadyAdded = false;
                 foreach (Game G in Games)   // check if this game has been added
+                {
                     if (G.Code == row[Program.GAME_CODE])
                     {
                         alreadyAdded = true;
                         break;
                     }
+                }
                 if (!alreadyAdded)
                     Games.Add(new Game(row, this));
             }

@@ -20,7 +20,10 @@ namespace CFB_Predictor_v2
 {
     public partial class Program
     {
-        // CFB team-game-statistics.csv constants
+        // ALGORITHM TUNABLES
+        public const double PY_EXP = 2.37;
+
+        // CFB TEAM GAME STATS
         public const int TEAM_CODE = 0;
         public const int GAME_CODE = 1;
         public const int RUSH_ATT = 2;
@@ -89,20 +92,26 @@ namespace CFB_Predictor_v2
         public const int RED_ZONE_ATT = 65;
         public const int RED_ZONE_TD = 66;
         public const int RED_ZONE_FG = 67;
+        public const int IS_HOME = 68;          // 1 for home team
 
+        // Totals
         public const int TEAM_GAME_PTS = 68;
         
-        // Advanced game stats
-        public const int IS_HOME = 68;          // 1 for home team
+        // ADVANCED GAME STATS
+        // Simple sums
         public const int TOTAL_YARDS = 69;      // rush + pass yards
         public const int TO_LOST = 70;          // turnovers lost
         public const int TO_GAIN = 71;          // turnovers gained
         public const int TO_NET = 72;           // turnovers gained - turnovers lost
-        public const int RZ_TD_PER = 73;        // Red zone td %
-        public const int RZ_SCORE_PER = 74;     // Red zone score %
-        public const int ADJ_RUSH_AVG = 75;     // adjusted yards per rushing attempt
+        public const int TOTAL_ATT = 73;        // pass att + rush att
+
+        public const int SIMPLE_PTS = TEAM_GAME_PTS + 6;
+
+        // Percentages, averages, etc
+        public const int RZ_TD_PER = 74;        // red zone td %
+        public const int RZ_SCORE_PER = 75;     // red zone score %
         public const int ADJ_PASS_AVG = 76;     // adjusted yards per passing attempt
-        public const int TOTAL_ATT = 77;        // pass att + rush att
+        public const int ADJ_RUSH_AVG = 77;     // adjusted yards per rushing attempt
         public const int INT_PER_ATT = 78;      // interception / pass att
         public const int FUM_PER_ATT = 79;      // fumble / rush att
         public const int TD_PER_ATT = 80;       // td / total att
@@ -112,6 +121,7 @@ namespace CFB_Predictor_v2
         public const int YARD_PER_RUSH = 84;    // yards / rush att
         public const int YARD_PER_PASS = 85;    // yards / rush att
 
+        // Totals
         public const int XTRA_DATA_PTS = 18;
         public const int N_DATA_PTS = TEAM_GAME_PTS + XTRA_DATA_PTS;
 
@@ -119,6 +129,7 @@ namespace CFB_Predictor_v2
         public const int OOC_PYTHAG = N_DATA_PTS;           // conference OOC pythagorean winning expectation
         public const int PYTHAG_EXPECT = N_DATA_PTS + 1;    // team's pythagorean winning expectation
 
+        // Totals
         public const int XTRA_METRICS = 2;
         public const int METRIC_PTS = N_DATA_PTS + XTRA_METRICS;
     }

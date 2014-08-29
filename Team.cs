@@ -38,15 +38,74 @@ namespace CFB_Predictor_v2
             Code = code;
             Name = name;
             Conference = conference;
+            if (!IsInConference())
+                Conference.Teams.Add(this);
         }
 
         //
-        // Adds all games to the game list
-        public void GetGames(List<Game> games)
+        // Sorts the games in order of date
+        public void InsertGame(Game G)
         {
-            foreach (Game G in games)
-                if (G.Home == this || G.Visitor == this)
-                    Games.Add(G);
+            int index = 0;
+            while (index < Games.Count)
+            {
+                if (Games[index].Date > G.Date)
+                {
+                    Games.Insert(index, G);
+                    return;
+                }
+                else
+                    index++;
+            }
+            Games.Add(G);
+        }
+
+        //
+        // Checks if this team is already added to the conference
+        public bool IsInConference()
+        {
+            foreach (Team T in Conference.Teams)
+                if (T == this)
+                    return true;
+            return false;
+        }
+
+        //
+        // Returns a list of data arrays for games previous to the input (from this season)
+        public List<double[]> ReturnSimpleLists(Game game)
+        {
+            List<double[]> returnList = new List<double[]>();
+            foreach (Game G in Games)
+            {
+                if (Program.UseGame(G) && game.Date > G.Date)
+                {
+                    double[] dataTGS = new double[Program.SIMPLE_PTS];
+                    bool isHome = ThisTeamHome(G);  // get TGS stats out of this game and add to the list
+                    for (int i = 0; i < dataTGS.Length; i++)
+                        dataTGS[i] = isHome ? G.HomeData[i] : G.VisitorData[i];
+                    returnList.Add(dataTGS);
+                }
+            }
+            return returnList;
+        }
+
+        //
+        // Returns a list of data arrays for games previous to the input (from this season)
+        public List<double[]> ReturnOppSimpleLists(Game game)
+        {
+            List<double[]> returnList = new List<double[]>();
+            foreach (Game G in Games)
+            {
+                if (Program.UseGame(G) && game.Date > G.Date)
+                {
+                    double[] dataTGS = new double[Program.SIMPLE_PTS];
+                    bool isHome = !ThisTeamHome(G);  // get TGS stats out of this game and add to the list
+                    for (int i = 0; i < dataTGS.Length; i++)
+                        dataTGS[i] = isHome ? G.HomeData[i] : G.VisitorData[i];
+                    returnList.Add(dataTGS);
+                }
+            }
+            return returnList;
         }
 
         //
@@ -92,7 +151,7 @@ namespace CFB_Predictor_v2
         }
 
         //
-        // Returns the season total of a stat
+        // Returns the season total of a stat for this team's opponent
         public double GetOppSeasonTotal(int stat, ref double nGames)
         {
             double total = 0;
