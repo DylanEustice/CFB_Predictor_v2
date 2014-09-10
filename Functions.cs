@@ -25,10 +25,10 @@ namespace CFB_Predictor_v2
     {
         //
         // Reads in a .csv file with the option to remove the header
-        public static string[][] ReadCSV(string pathName, string fileName, bool hasHeader)
+        public static string[][] ReadCSV(string fileName, bool hasHeader)
         {
             List<string[]> dataList = new List<string[]>();
-            using (TextFieldParser parser = new TextFieldParser(pathName + fileName))
+            using (TextFieldParser parser = new TextFieldParser(fileName))
             {
                 parser.TextFieldType = FieldType.Delimited;
                 parser.SetDelimiters(",");
@@ -43,6 +43,73 @@ namespace CFB_Predictor_v2
                 }
             }
             return dataList.ToArray();
+        }
+
+        //
+        // Reads in a network saved to file
+        public static Neural_Network RememberNetwork(string fileName)
+        {
+            string[][] allData = ReadCSV(fileName, false);     // read in data
+
+            // Set Layer Sizes
+            int[] LayerSizes = new int[allData[0].Length];
+            for (int i = 0; i < allData[0].Length; i++)
+            {
+                string[] thisLayerSize = allData[0];
+                LayerSizes[i] = (int)Convert.ToDouble(thisLayerSize[i]);
+            }
+            // Set Opponent Data Info
+            bool[] UseOpponent = new bool[allData[1].Length];
+            for (int i = 0; i < allData[1].Length; i++)
+            {
+                string[] thisUseOpponent = allData[1];
+                UseOpponent[i] = (thisUseOpponent[i] == "True") ? true : false;
+            }
+            // Set Offense Data Info
+            bool[] UseOffense = new bool[allData[2].Length];
+            for (int i = 0; i < allData[2].Length; i++)
+            {
+                string[] thisUseOffense = allData[2];
+                UseOffense[i] = (thisUseOffense[i] == "True") ? true : false;
+            }
+            // Set Input Info
+            int[] InputStats = new int[allData[3].Length];
+            for (int i = 0; i < allData[3].Length; i++)
+            {
+                string[] thisInputStats = allData[3];
+                InputStats[i] = (int)Convert.ToDouble(thisInputStats[i]);
+            }
+            // Set Output Info
+            int[] OutputStats = new int[allData[4].Length];
+            for (int i = 0; i < allData[4].Length; i++)
+            {
+                string[] thisOutputStats = allData[4];
+                OutputStats[i] = (int)Convert.ToDouble(thisOutputStats[i]);
+            }
+
+            // Set network activation function and initialize network to 0
+            int actFunction = (int)Convert.ToDouble(allData[5][0]);
+            Neural_Network outputNetwork = new Neural_Network(LayerSizes, InputStats, OutputStats, UseOpponent, UseOffense, actFunction, 0);
+
+            // Use data to set weights within network
+            int currLayer = 0, currNode = 0;
+            for (int i = 5; i < allData.Length; i++)             // the number of lines
+            {
+                for (int j = 0; j < allData[i].Length; j++)      // the number of weights in this node
+                {
+                    string[] weights = allData[i];
+                    double weight = Convert.ToDouble(weights[j]);
+                    outputNetwork.Layers[currLayer].Nodes[currNode].Weights[j] = weight;    // set weight
+                }
+                currNode++;
+                if (currNode == outputNetwork.Layers[currLayer].Nodes.Length)
+                {
+                    currNode = 0;
+                    currLayer++;
+                }
+            }
+
+            return outputNetwork;
         }
 
         //
@@ -93,6 +160,8 @@ namespace CFB_Predictor_v2
         // Returns true if this game is acceptable for use
         public static bool UseGame(Game G)
         {
+            if (G.Home.Conference.Division == "FCS" || G.Visitor.Conference.Division == "FCS")
+                return false;
             return true;
         }
     }

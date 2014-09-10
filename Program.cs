@@ -36,7 +36,6 @@ namespace CFB_Predictor_v2
                 allSeasons.Add(newSeason);
             }
 
-
             // END
             Console.WriteLine("\nPress ENTER to continue...");
             Console.ReadLine();

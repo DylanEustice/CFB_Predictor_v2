@@ -36,6 +36,7 @@ namespace CFB_Predictor_v2
         public double[] HomeMetrics = new double[Program.METRIC_PTS];
         public double[] HomeOppMetrics = new double[Program.METRIC_PTS];
         public bool NoHomeMetrics = false;
+        public bool MetricsDone = false;
         // Who won?
         public bool HomeWin = false;
         public bool VisitorWin = false;
@@ -103,6 +104,30 @@ namespace CFB_Predictor_v2
                 }
             }
         }
+
+        #region Point Predictions
+        //
+        // Finds appropriate metrics and runs them on the inputted ANN
+        public double PredictTeamPoints(Neural_Network predictor, bool getHome)
+        {
+            // Find input metrics
+            double[] inputs = new double[predictor.InputStats.Length];
+            for (int i = 0; i < predictor.InputStats.Length; i++)
+                inputs[i] = GetMetric(predictor.InputStats[i], predictor.UseOpponent[i], predictor.UseOffense[i], getHome);
+            double[] output = predictor.Think(inputs);  // return outputs
+            return output[0];
+        }
+
+        //
+        // Returns a team's metric
+        public double GetMetric(int type, bool useOpp, bool useOff, bool getHome)
+        {
+            if ((getHome && !useOpp) || (!getHome && useOpp))
+                return useOff ? HomeMetrics[type] : HomeOppMetrics[type];       // Get home stats
+            else
+                return useOff ? VisitorMetrics[type] : VisitorOppMetrics[type]; // Get visitor stats
+        }
+        #endregion
 
         #region Get this team-game-stats array
         //
@@ -200,6 +225,16 @@ namespace CFB_Predictor_v2
         // Gets the metrics used to predict this game
         public void GetTeamMetrics()
         {
+            // Make sure all metrics for prior games have been calculated
+            foreach (Team T in Home.Conference.Teams)
+                foreach (Game G in T.Games)
+                    if (G.Date < Date && !G.MetricsDone)
+                        G.GetTeamMetrics();
+            foreach (Team T in Visitor.Conference.Teams)
+                foreach (Game G in T.Games)
+                    if (G.Date < Date && !G.MetricsDone)
+                        G.GetTeamMetrics();
+
             // Get team-game-stats averages from last season
             double[] homePrevSimpleAvg = new double[Program.SIMPLE_PTS];
             double[] homePrevOppSimpleAvg = new double[Program.SIMPLE_PTS];
@@ -239,6 +274,7 @@ namespace CFB_Predictor_v2
             }
             if (nHomeGames == 0)
                 NoHomeMetrics = true;
+            HomeMetrics[Program.IS_HOME] = 1;
 
             // Get visitor averages
             AddSeasonMetrics(ref visitorMetricTotals, ref visitorOppMetricTotals, visitorSimpleLists, visitorOppSimpleLists);
@@ -253,6 +289,7 @@ namespace CFB_Predictor_v2
 
             // Get advanced metrics
             GetAdvancedMetrics();
+            MetricsDone = true;
         }
 
         //
@@ -313,7 +350,10 @@ namespace CFB_Predictor_v2
             GetMiscMetrics(ref VisitorMetrics);
             GetMiscMetrics(ref VisitorOppMetrics);
 
+            // Get pythagorean expectations
             GetPythagExpMetrics();
+            GetOOCPythagExpMetrics(Home, ref HomeMetrics);
+            GetOOCPythagExpMetrics(Visitor, ref VisitorMetrics);
         }
         #endregion
 
@@ -421,6 +461,37 @@ namespace CFB_Predictor_v2
             }
             VisitorOppMetrics[Program.PYTHAG_EXPECT] = (visitorGames > 0) ? visitorOppTotal / visitorGames : 0.5;
         }
+
+        //
+        // Gets the teams' conferences OOC pythagorean expectation
+        public void GetOOCPythagExpMetrics(Team team, ref double[] metrics)
+        {
+            // Add all team's conference OOC games to a list (from this season and last)
+            List<Game> OOCGames = new List<Game>();
+            Conference prevConference = new Conference();
+            if (Season.PastSeasons.Count > 0)   // add last season's games
+                if (FindPreviousConference(team.Conference, ref prevConference))
+                    foreach (Team T in prevConference.Teams)
+                        foreach (Game G in T.Games)
+                            if (Program.UseGame(G) && prevConference.IsOOC(G))
+                                OOCGames.Add(G);
+            foreach (Team T in team.Conference.Teams)   // add this season's games
+                foreach (Game G in T.Games)
+                    if (G.Date < Date && Program.UseGame(G) && team.Conference.IsOOC(G))
+                        OOCGames.Add(G);
+            if (OOCGames.Count == 0)
+                metrics[Program.OOC_PYTHAG] = 0.5;
+            else
+            {
+                double RS = 0, RA = 0;
+                foreach (Game G in OOCGames)
+                {
+                    RS += (G.Home.Conference == Home.Conference) ? G.HomeData[Program.POINTS] : G.VisitorData[Program.POINTS];
+                    RA += (G.Home.Conference == Home.Conference) ? G.VisitorData[Program.POINTS] : G.HomeData[Program.POINTS];
+                }
+                metrics[Program.OOC_PYTHAG] = Program.GetPythagExp(RS, RA);
+            }
+        }
         #endregion
 
         #region Get previous season averages
@@ -463,6 +534,22 @@ namespace CFB_Predictor_v2
         }
         #endregion
 
+        #region Find previous objects
+        //
+        // Gets reference to the previous season's conference. Returns false if that conference did not have a previous season.
+        public bool FindPreviousConference(Conference conference, ref Conference prevConference)
+        {
+            int confNum = 0;
+            while (Season.PastSeasons[Season.PastSeasons.Count - 1].Conferences[confNum].Code != Home.Conference.Code)
+            {
+                confNum++;
+                if (confNum >= Season.PastSeasons[Season.PastSeasons.Count - 1].Conferences.Count)
+                    return false;
+            }
+            prevConference = Season.PastSeasons[Season.PastSeasons.Count - 1].Conferences[confNum];
+            return true;
+        }
+
         //
         // Gets reference to the previous season's team. Returns false if that team did not have a previous season.
         public bool FindPreviousTeam(Team team, ref Team prevTeam)
@@ -477,5 +564,6 @@ namespace CFB_Predictor_v2
             prevTeam = Season.PastSeasons[Season.PastSeasons.Count - 1].Teams[teamNum];
             return true;
         }
+        #endregion
     }
 }

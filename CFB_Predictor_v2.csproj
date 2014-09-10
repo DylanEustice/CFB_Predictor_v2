@@ -46,10 +46,14 @@
     <Compile Include="Defines.cs" />
     <Compile Include="Functions.cs" />
     <Compile Include="Game.cs" />
+    <Compile Include="Layer.cs" />
+    <Compile Include="Neural_Network.cs" />
+    <Compile Include="Node.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Season.cs" />
     <Compile Include="Team.cs" />
+    <Compile Include="Tunables.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

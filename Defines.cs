@@ -20,9 +20,6 @@ namespace CFB_Predictor_v2
 {
     public partial class Program
     {
-        // ALGORITHM TUNABLES
-        public const double PY_EXP = 2.37;
-
         // CFB TEAM GAME STATS
         public const int TEAM_CODE = 0;
         public const int GAME_CODE = 1;
@@ -132,5 +129,10 @@ namespace CFB_Predictor_v2
         // Totals
         public const int XTRA_METRICS = 2;
         public const int METRIC_PTS = N_DATA_PTS + XTRA_METRICS;
+
+        // ACTIVATION FUNCTIONS
+        public const int HYP_TAN = 0;
+        public const int LINEAR = 1;
+        public const int EXPONENTIAL = 2;
     }
 }

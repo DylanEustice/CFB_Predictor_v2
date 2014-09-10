@@ -26,12 +26,30 @@ namespace CFB_Predictor_v2
         public List<Team> Teams = new List<Team>();
 
         //
+        // Blank constructor
+        public Conference()
+        {
+        }
+
+        //
         // Constructor
         public Conference(int code, string name, string div)
         {
             Code = code;
             Name = name;
             Division = div;
+        }
+
+        //
+        // Returns true if a game is out of conference
+        public bool IsOOC(Game G)
+        {
+            if (G.Home.Conference != this && G.Visitor.Conference != this)
+                Console.WriteLine("WARNING: Neither team is in this conference!\n");
+            if (G.Home.Conference != this || G.Visitor.Conference != this)
+                return true;
+            else
+                return false;
         }
     }
 }

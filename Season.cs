@@ -36,23 +36,23 @@ namespace CFB_Predictor_v2
         {
             Year = year;
             PastSeasons = pastSeasons;
-            Console.WriteLine("Reading data and building teams from {0}\n", Year);
-
-            // Read in team-game-statistics.csv data file
+            Console.WriteLine("Reading data and building {0} season", Year);
             string yearString = Year.ToString();
             string pathName = "../../Statistics" + "/" + yearString + "/";
+
+            // Read in team-game-statistics.csv data file
             string fileName = "team-game-statistics.csv";
-            string[][] teamGameStatsStr = Program.ReadCSV(pathName, fileName, true);
+            string[][] teamGameStatsStr = Program.ReadCSV(pathName + fileName, true);
             TeamGameStats = Program.ConvertStringToDouble(teamGameStatsStr);
 
             // Read in conference data from file and build conference list
             fileName = "conference.csv";
-            string[][] confData = Program.ReadCSV(pathName, fileName, true);
+            string[][] confData = Program.ReadCSV(pathName + fileName, true);
             BuildConferenceList(confData);
 
             // Read in team data from file and build team list
             fileName = "team.csv";
-            string[][] teamData = Program.ReadCSV(pathName, fileName, true);
+            string[][] teamData = Program.ReadCSV(pathName + fileName, true);
             BuildTeamList(teamData);
 
             // Build games
