@@ -23,6 +23,45 @@ namespace CFB_Predictor_v2
 {
     public partial class Program
     {
+
+        //
+        // Trains a neural network via particle swarm
+        public static Swarm RunParticleSwarm(ref Swarm swarm)
+        {
+            Stopwatch stopwatch = new Stopwatch(); ;
+            Console.Write("Training neural network via particle swarm");
+            for (int i = 1; i <= ITERATIONS; i++)
+            {
+                // Get start time
+                if (i == 1)
+                    stopwatch.Start();
+
+                // Write progress
+                if (i % (ITERATIONS / 10) == 0)
+                {
+                    Console.Write(100 * i / ITERATIONS);
+                    if (i != ITERATIONS)
+                        Console.Write(", ");
+                    else
+                        Console.WriteLine();
+                }
+                // Iterate
+                swarm.GetParticleFitnesses(i);
+                swarm.MoveParticles();
+                if (swarm.AverageMovement.Last() < MIN_MOVEMENT)
+                    swarm.ResetParticles();
+
+                // Get stop time and estimate total runtime
+                if (i == 5)
+                {
+                    stopwatch.Stop();
+                    Console.WriteLine(", expected runtime: {0} s", ITERATIONS * stopwatch.ElapsedMilliseconds / 5000);
+                }
+            }
+            Console.WriteLine();
+            return swarm;
+        }
+
         //
         // Reads in a .csv file with the option to remove the header
         public static string[][] ReadCSV(string fileName, bool hasHeader)

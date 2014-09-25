@@ -49,9 +49,11 @@
     <Compile Include="Layer.cs" />
     <Compile Include="Neural_Network.cs" />
     <Compile Include="Node.cs" />
+    <Compile Include="Particle.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Season.cs" />
+    <Compile Include="Swarm.cs" />
     <Compile Include="Team.cs" />
     <Compile Include="Tunables.cs" />
   </ItemGroup>

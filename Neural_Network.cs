@@ -36,29 +36,31 @@ namespace CFB_Predictor_v2
         public Neural_Network(int[] LayerInfo, int[] inputStats, int[] outputStats, bool[] inUseOpponent, bool[] inUseOffense, 
                               int actFunction, Random random, int resets)
         {
-            // Initialize layers
             LayerSizes = LayerInfo;
             InputStats = inputStats;
             OutputStats = outputStats;
             UseOpponent = inUseOpponent;
             UseOffense = inUseOffense;
             ActFunction = actFunction;
+
+            // Initialize layers
             Layers = new Layer[LayerSizes.Length];
             for (int i = 0; i < LayerSizes.Length - 1; i++)
-                Layers[i] = new Layer(LayerSizes[i], LayerSizes[i + 1], random, ActFunction);
+                Layers[i] = new Layer(LayerSizes[i], LayerSizes[i + 1], random, ActFunction, resets);
             Layers[LayerSizes.Length - 1] = new Layer(LayerSizes[LayerSizes.Length - 1], true, ActFunction);
         }
         // Initializes layers with a specific weight
         public Neural_Network(int[] LayerInfo, int[] inputStats, int[] outputStats, bool[] inUseOpponent, bool[] inUseOffense,
                               int actFunction, double weightInit)
         {
-            // Initialize layers
             LayerSizes = LayerInfo;
             InputStats = inputStats;
             OutputStats = outputStats;
             UseOpponent = inUseOpponent;
             UseOffense = inUseOffense;
             ActFunction = actFunction;
+
+            // Initialize layers
             Layers = new Layer[LayerSizes.Length];
             for (int i = 0; i < LayerSizes.Length - 1; i++)
                 Layers[i] = new Layer(LayerSizes[i], LayerSizes[i + 1], ActFunction, weightInit);

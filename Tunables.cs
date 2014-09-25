@@ -22,7 +22,7 @@ namespace CFB_Predictor_v2
     public partial class Program
     {
         // Activation function
-        public const int USE_ACT = HYP_TAN;
+        public const int USE_ACT = LINEAR;
 
         // Neural network ranges
         public const double MAX_WEIGHT = 1;            // max initial weight of neural network synapse
@@ -36,5 +36,13 @@ namespace CFB_Predictor_v2
         public const double HYP_SCALE = 3;
         public const double LINEAR_SCALE = 1;
         public const double EXP_SCALE = 4;
+
+        // Particle swarm parameters
+        public const double MAX_MOVEMENT = 0;
+        public const double MIN_MOVEMENT = 0.001;
+        public const double MOMENTUM = 0.95;
+        public const double MOM_GLOBAL = 0.2;
+        public const double MOM_PERSONAL = 0.2;
+        public const int ITERATIONS = 1000;
     }
 }

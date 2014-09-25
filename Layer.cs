@@ -25,25 +25,9 @@ namespace CFB_Predictor_v2
 
         //
         // Constructor
-        public Layer(int LayerSize, int ChildSize, Random random, int actFunction)
-        {
-            Nodes = new Node[LayerSize + 1]; // For bias
-            for (int i = 0; i < Nodes.Length; i++)
-                Nodes[i] = new Node(ChildSize, actFunction);
-
-            // Assign random weights to each node
-            foreach (Node n in Nodes)
-            {
-                for (int i = 0; i < n.Weights.Length; i++)
-                {
-                    double weight = 2 * Program.MAX_WEIGHT * random.NextDouble() + Program.MIN_WEIGHT;
-                    n.Weights[i] = weight;
-                }
-            }
-        }
         public Layer(int LayerSize, int ChildSize, Random random, int actFunction, int resets)
         {
-            Nodes = new Node[LayerSize + 1];
+            Nodes = new Node[LayerSize + 1]; // For bias
             for (int i = 0; i < Nodes.Length; i++)
                 Nodes[i] = new Node(ChildSize, actFunction);
 
