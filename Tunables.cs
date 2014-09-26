@@ -22,7 +22,7 @@ namespace CFB_Predictor_v2
     public partial class Program
     {
         // Activation function
-        public const int USE_ACT = LINEAR;
+        public const int USE_ACT = HYP_TAN;
 
         // Neural network ranges
         public const double MAX_WEIGHT = 1;            // max initial weight of neural network synapse

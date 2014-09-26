@@ -35,6 +35,21 @@ namespace CFB_Predictor_v2
                 Season newSeason = new Season(year, allSeasons);    // read new season
                 allSeasons.Add(newSeason);
             }
+            NormalizeSeasonMetrics(ref allSeasons);
+
+            Neural_Network testNetwork = TrainNetwork(allSeasons);
+            foreach (Game G in allSeasons[8].Games)
+            {
+                Console.WriteLine("=====================================================");
+                Console.WriteLine(G.Home.Name);
+                Console.WriteLine("Predicted: {0}", G.PredictTeamPoints(testNetwork, true));
+                Console.WriteLine("   Actual: {0}\n", G.HomeData[POINTS]);
+                Console.WriteLine(G.Visitor.Name);
+                Console.WriteLine("Predicted: {0}", G.PredictTeamPoints(testNetwork, false));
+                Console.WriteLine("   Actual: {0}", G.VisitorData[POINTS]);
+                Console.WriteLine("=====================================================");
+                Console.ReadLine();
+            }
 
             // END
             Console.WriteLine("\nPress ENTER to continue...");
